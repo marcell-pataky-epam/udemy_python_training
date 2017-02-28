@@ -30,6 +30,8 @@ with fileinput.FileInput(file_path, inplace=True, backup='.bak') as file:
     for line in file:
         print(line.replace(deprecated_logger_import, loggerfactory_import), end='')
         if line.lstrip().startswith("Logger."):
-            print(line.replace(line, replace_logger_line(line)), end='')
+            old_line = line
+            new_line = replace_logger_line(line)
+            print(line.replace(old_line, new_line), end='')
 
 file.close()

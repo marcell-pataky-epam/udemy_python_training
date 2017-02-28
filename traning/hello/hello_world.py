@@ -1,6 +1,10 @@
 import fileinput
 import re
 
+from tempfile import mkstemp
+from shutil import move
+from os import remove, close
+
 file_path = "/Users/Marcell_Pataky/Desktop/parser/ExpenseReportCtcService.java"
 
 deprecated_logger_import = "import com.epam.ctc.core.logger.Logger;"
@@ -12,25 +16,40 @@ logger_instantiation = "private static final Logger LOGGER = LoggerFactory.getLo
 get_class_and_method_names = "Logger.getClassAndMethodNames()"
 
 
-def rename_logger_call(logger):
-    return logger.replace("Logger", "LOGGER")
+def replace(pattern, subst):
+    # Create temp file
+    fh, abs_path = mkstemp()
+    with open(abs_path, 'w') as new_file:
+        with open(file_path) as old_file:
+            for line in old_file:
+                new_file.write(line.replace(pattern, subst))
+    close(fh)
+    # Remove original file
+    remove(file_path)
+    # Move new file
+    move(abs_path, file_path)
 
 
-def remove_getClassAndMethodNames_call(method_call):
-    return re.sub("Logger.getClassAndMethodNames\(\)\s*\+\s*", "", method_call)
+def rename_logger_call(text_to_be_renamed):
+    return text_to_be_renamed.replace("Logger", "LOGGER")
+
+
+def remove_getClassAndMethodNames_call(text_to_be_replaced):
+    return re.sub("Logger.getClassAndMethodNames\(\)\s*\+\s*", "", text_to_be_replaced)
 
 
 def replace_logger_line(text):
-    if text.lstrip().startswith("Logger."):
-        text = remove_getClassAndMethodNames_call(text)
-        text = rename_logger_call(text)
-        return text
+    text = remove_getClassAndMethodNames_call(text)
+    text = rename_logger_call(text)
+    return text
 
 
-file = open(file_path, "r")
-
-for line in file:
-    if line.lstrip().startswith("Logger."):
-        print(replace_logger_line(line))
+with fileinput.FileInput(file_path, inplace=True, backup='.bak') as file:
+    for line in file:
+        print(line.replace(deprecated_logger_import, loggerfactory_import), end='')
+        if line.lstrip().startswith("Logger."):
+            old_line = line
+            new_line = replace_logger_line(line)
+            print(line.replace(old_line, new_line), end='')
 
 file.close()
